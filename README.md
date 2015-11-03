@@ -22,26 +22,27 @@ var APICache = require('node-api-cache')
 var app = express()
 var apiCache = new APICache({
 	cacheDir: 'cache-api/',
-	excludeRequestHeaders: ['Cookie', 'User-Agent', 'User-Agent', 'Referer', 'Origin', 'Host', 'DNT'],
+	excludeRequestHeaders: [
+		'Cookie', 'User-Agent', 'User-Agent', 'Referer', 'Origin', 'Host', 'DNT'
+	],
 	excludeRequestParams: ['_']
 })
 
 app.use('/api', function apiProxy(req, res, next) {
-  var url = req.url.replace('/api/', '')
+	var url = req.url.replace('/api/', '')
 
-  req
-  .pipe(
-    request('http://my-backend.local/' + url)
-    .on('response', function(response) {
-    	apiCache.onResponse(response, req)
-    })
-    .on('error', function(err) {
-    	apiCache.onError(err, req, res, function(cacheErr, body) {
+	req
+	.pipe(
+		request('http://my-backend.local/' + url)
+		.on('data', apiCache.onData)
+		.on('response', apiCache.onResponse)
+		.on('error', function(err) {
+			apiCache.onError(err, req, res, function(cacheErr, body) {
 
-    	})
-    })
-  )
-  .pipe(res)
+			})
+		})
+	)
+	.pipe(res)
 })
 
 ```

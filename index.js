@@ -1,36 +1,69 @@
 'use strict'
 var assert = require('assert')
-var objectAssign = require('object-assign')
 var extract = require('url-querystring')
+var objectAssign = require('object-assign')
+var zlib = require('zlib')
 
 /* TODO
-  var url = extract(req.url.replace('/api/', ''))
+	var url = extract(req.url.replace('/api/', ''))
 
-  delete url.qs._ // remove cache param
-  var urlString = Object.keys(url.qs).map(function (k) {
-    return k + '=' + encodeURIComponent(url.qs[k])
-  }).join('&')
+	delete url.qs._ // remove cache param
+	var urlString = Object.keys(url.qs).map(function (k) {
+		return k + '=' + encodeURIComponent(url.qs[k])
+	}).join('&')
 
-  urlString = urlString ? url.url + '?' + urlString : url.url
+	urlString = urlString ? url.url + '?' + urlString : url.url
  */
 
-APICache.prototype.onResponse = function(response) {
-	var body = ''
-  response.on('data', function(chunk) {
-    body += chunk
-  })
-  response.on('end', function () {
-    console.log('BODY: ' + body);
-    console.log('headers', response.headers)
-    console.log('method', response.method)
-    console.log('statusCode', response.statusCode)
-    // TODO
-    console.log('response', response)
-  });
+function createEnvelope(response, body, res) {
+
+	debugger
+	return {
+		reqURL: response.request.href,
+		reqMethod: response.request.method,
+		reqHeaders: response.request.headers,
+
+		body: body,
+		headers: response.headers,
+		status: response.statusCode + ' ' + response.statusMessage
+	}
+
+}
+
+APICache.prototype.onResponse = function(response, req, res) {
+	var body
+
+	if( response.headers['content-encoding'] === 'gzip' ) {
+		body = []
+		response.on('data', function (data) {
+			// Data is Buffer, when gzip
+			body.push.apply(body, data.toJSON().data)
+		})
+	} else {
+		body = ''
+		response.on('data', function (data) {
+			body += data
+		})
+	}
+
+	response.on('end', function () {
+		console.log('BODY: ' + body)
+		console.log('res headers', response.headers)
+		console.log('method', response.method)
+		console.log('statusCode', response.statusCode)
+		// TODO
+		console.log('response', response)
+
+		console.log( createEnvelope(response, body, res) )
+	})
 }
 
 APICache.prototype.onError = function() {
 
+}
+
+APICache.prototype.onData = function() {
+	debugger
 }
 
 function APICache(config) {

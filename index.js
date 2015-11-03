@@ -41,25 +41,26 @@ APICache.prototype._createEnvelope = function(response, body, res) {
 }
 
 APICache.prototype.onResponse = function(response, req, res) {
-	var body
+	var body = []
 
-	if( response.headers['content-encoding'] === 'gzip' ) {
-		body = []
-		response.on('data', function(data) {
-			// Data is Buffer, when gzip
-			body.push.apply(body, data.toJSON().data)
-		})
-	} else {
-		body = ''
-		response.on('data', function(data) {
-			body += data
-		})
-	}
+	var encoding = response.headers['content-encoding']
+	response.on('data', function(chunk) {
+		// Data is Buffer, when gzip
+		body.push(chunk)
+	})
 
 	response.on('end', function () {
+		// Thanks, Nick Fishman
+		// http://nickfishman.com/post/49533681471/nodejs-http-requests-with-gzip-deflate-compression
+		var buffer = Buffer.concat(body)
+		if (encoding === 'gzip') {
+			body = zlib.gunzipSync(buffer)
+		} else if (encoding == 'deflate') {
+			body = zlib.inflateSync(buffer)
+		}
+		body = body && body.toString()
+
 		var envelope = this._createEnvelope(response, body, res)
-		// TODO: isValid envelope.body should be string here, so we have to
-		//       create envelope copy and unpack gzip contents
 
 		if (this.config.isValid(envelope)) {
 			this._saveRequest(envelope)

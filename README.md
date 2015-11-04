@@ -3,6 +3,8 @@ Node API Cache
 When API is down, work may be hard for front-end developer.
 Configure api cache to mock REST API responses.
 
+API not responding.
+![API not responding.](docs/OqWCFTn.gif)
 
 How it works?
 ------

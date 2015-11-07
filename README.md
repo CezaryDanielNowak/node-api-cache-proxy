@@ -4,6 +4,7 @@ When API is down, work may be hard for front-end developer.
 Configure api cache to mock REST API responses.
 
 API not responding.
+
 ![API not responding.](docs/OqWCFTn.gif)
 
 How it works?
@@ -35,35 +36,30 @@ var apiCache = new APICache({
 		} else {
 			return false;
 		}
+	},
+	apiUrl: config.testServer.apiBaseUrl,
+	localURLReplace: function(url) {
+		return url.replace('/api/', '')
 	}
 })
 
-app.use('/api', function apiProxy(req, res, next) {
-	var url = req.url.replace('/api/', '')
-
-	req
-	.pipe(
-		request('http://my-backend.local/' + url)
-		.on('data', apiCache.onData)
-		.on('response', apiCache.onResponse)
-		.on('error', function(err) {
-			apiCache.onError(err, req, res, function(cacheErr, body) {
-
-			})
-		})
-	)
-	.pipe(res)
+app.use('/api', function (req, res, next) {
+  process.stdout.write('🐷  ')
+  apiCacheProxy(req, res, next).on('error', function(err) {
+    errorHandler(err, req, res, next)
+  })
 })
-
 ```
 
 
 API
 ------
 `var apiCache = new APICache(config)`, config:
+- `apiUrl` {string, required}: Directory to save requests
 - `cacheDir` {string, required}: Directory to save requests
 - `excludeRequestHeaders` {array, required}: headers to ommit when writing or reading cache file
 - `excludeRequestParams` {array}: usually cache parameter from your request
+- `localURLReplace(url: string)` {function}: prepare url to API
 - `isValid` {function(requestEnvelope: Object)}: Check if API response is valid or not.
     - when `true` is returned, request will be saved and ready to use
     - when `false` is returned, request won't be saved and cache entry will be

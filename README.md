@@ -83,3 +83,16 @@ API
 		statusMessage: response.statusMessage
 	}
 ```
+
+
+API data format support table
+------
+
+| Feature               | Support       |
+| --------------------- | ------------- |
+| text content          | Yes           |
+| deflate-text content  | Yes           |
+| gzip-text content     | Yes           |
+| binary content        | No            |
+| https                 | Yes           |
+| POST, GET, PUT, ...   | Yes           |

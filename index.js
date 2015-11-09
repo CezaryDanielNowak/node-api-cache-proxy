@@ -33,7 +33,7 @@ APICache.prototype._createEnvelope = function(response, body, res) {
 	var headers = omit(response.headers, 'content-encoding')
 
 	return {
-		reqURL: this._clearURL(response.request.href),
+		reqURL: this._clearURLParams(response.request.href),
 		reqMethod: response.request.method,
 		reqHeaders: response.request.headers,
 		reqBody: '',
@@ -80,7 +80,7 @@ APICache.prototype.onResponse = function(response, req, res) {
  * @param	{string} href
  * @return {string}
  */
-APICache.prototype._clearURL = function(href) {
+APICache.prototype._clearURLParams = function(href) {
 	var url = extract(href)
 	var queryObj = omit(url.qs, this.config.excludeRequestParams)
 
@@ -137,8 +137,6 @@ function APICache(config) {
 	this.onError = APICache.prototype.onError.bind(this)
 	this.onResponse = APICache.prototype.onResponse.bind(this)
 
-
-
 	var handleRequest = function(req, res, next, configOverride) {
 		var newConfig = objectAssign({}, this.config, configOverride || {})
 
@@ -146,7 +144,7 @@ function APICache(config) {
 		url.splice(0, 3) // remove local protocol and domain part
 		url.unshift(newConfig.apiUrl.replace(/\/+$/, '')) // push destination api url
 		url = url.join('/')
-
+		debugger
 		if (newConfig.localURLReplace) {
 			url = newConfig.localURLReplace(url)
 		}
@@ -154,10 +152,10 @@ function APICache(config) {
 		var apiReq = request(url)
 			.on('response', function(response) {
 				this.onResponse(response)
-			})
+			}.bind(this))
 			.on('error', function(err) {
 				this.onError(err, req, res)
-			})
+			}.bind(this))
 
 		req.pipe(apiReq).pipe(res)
 

@@ -1,4 +1,4 @@
-Node API Cache
+Node API Cache Proxy
 ======
 When API is down, work may be hard for front-end developer.
 Configure api cache to mock REST API responses.
@@ -20,16 +20,16 @@ How to use
 Sample using Express:
 ```
 var express = require('express')
-var APICache = require('node-api-cache')
+var APICacheProxy = require('node-api-cache-proxy')
 
 var app = express()
-var apiCache = new APICache({
+var apiCache = new APICacheProxy({
 	cacheDir: 'cache-api/',
 	excludeRequestHeaders: [
 		'Cookie', 'User-Agent', 'User-Agent', 'Referer', 'Origin', 'Host', 'DNT'
 	],
 	excludeRequestParams: ['_'],
-	isValid: function(requestEnvelope) {
+	shouldSave: function(requestEnvelope) {
 		// this is default validation function, feel free to override it
 		if (requestEnvelope.statusCode === 200) {
 			return true;
@@ -43,12 +43,7 @@ var apiCache = new APICache({
 	}
 })
 
-app.use('/api', function (req, res, next) {
-  process.stdout.write('🐷  ')
-  apiCacheProxy(req, res, next).on('error', function(err) {
-    errorHandler(err, req, res, next)
-  })
-})
+app.use('/api', apiCacheProxy)
 ```
 
 
@@ -60,7 +55,7 @@ API
 - `excludeRequestHeaders` {array, required}: headers to ommit when writing or reading cache file
 - `excludeRequestParams` {array}: usually cache parameter from your request
 - `localURLReplace(url: string)` {function}: prepare url to API
-- `isValid` {function(requestEnvelope: Object)}: Check if API response is valid or not.
+- `shouldSave` {function(requestEnvelope: Object)}: Check if API response is valid or not.
     - when `true` is returned, request will be saved and ready to use
     - when `false` is returned, request won't be saved and cache entry will be
       served instead (if available)

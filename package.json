@@ -22,6 +22,7 @@
     "filendir": "1.0.0",
     "object-assign": "4.0.1",
     "object.omit": "2.0.0",
+    "raw-body": "2.1.4",
     "request": "2.65.0",
     "sanitize-filename": "1.4.5",
     "url-querystring": "2.1.1"

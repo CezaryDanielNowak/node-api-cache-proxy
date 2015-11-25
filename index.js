@@ -2,6 +2,7 @@
 var assert = require('assert')
 var extract = require('url-querystring')
 var filendir = require('filendir')
+var getRawBody = require('raw-body')
 var MD5 = require("crypto-js/md5");
 var objectAssign = require('object-assign')
 var omit = require('object.omit')
@@ -10,43 +11,46 @@ var request = require('request')
 var sanitize = require('sanitize-filename')
 var zlib = require('zlib')
 
-var moduleName = 'node-api-cache'
+
+var MODULE_NAME = 'node-api-cache-proxy'
+
+var log = console.log.bind(console, '[' + MODULE_NAME + '] ')
 
 var defaultConfig = {
 	cacheDir: '',
 	excludeRequestHeaders: [],
 	excludeRequestParams: [],
-	isValid: function(envelope) {
+	shouldSave: function(envelope) {
 		if (envelope.statusCode === 200) {
 			return true
 		} else {
 			return false
 		}
+	},
+	localURLReplace: function(url) {
+		return url
 	}
 }
 
-APICache.prototype._createEnvelope = function(response, body, res) {
-	// TODO: add request body for POST
-	// TODO: parse excludeRequestHeaders before saving request body (POST)
-
-	// content is unpacked, content-encoding doesn't apply anymore
-	var headers = omit(response.headers, 'content-encoding')
+APICache.prototype._createEnvelope = function(response, body, res, requestBody) {
+	var excludeRequestHeaders = ['content-encoding'] // content is unpacked, content-encoding doesn't apply anymore
+	excludeRequestHeaders.push.apply(excludeRequestHeaders, this.config.excludeRequestHeaders)
+	var headers = omit(response.headers, excludeRequestHeaders)
 
 	return {
 		reqURL: this._clearURLParams(response.request.href),
 		reqMethod: response.request.method,
 		reqHeaders: response.request.headers,
-		reqBody: '',
+		reqBody: requestBody,
 
 		body: body,
 		headers: headers,
 		statusCode: response.statusCode,
 		statusMessage: response.statusMessage
 	}
-
 }
 
-APICache.prototype.onResponse = function(response, req, res) {
+APICache.prototype.onResponse = function(response, requestBody) {
 	var body = []
 
 	response.on('data', function(chunk) {
@@ -64,11 +68,11 @@ APICache.prototype.onResponse = function(response, req, res) {
 		} else if (encoding == 'deflate') {
 			body = zlib.inflateSync(buffer)
 		}
-		body = body && body.toString()
+		body = body ? body.toString() : ''
 
-		var envelope = this._createEnvelope(response, body, res)
+		var envelope = this._createEnvelope(response, body, null, requestBody)
 
-		if (this.config.isValid(envelope)) {
+		if (this.config.shouldSave(envelope)) {
 			this._saveRequest(envelope)
 		}
 	}.bind(this))
@@ -93,8 +97,7 @@ APICache.prototype._clearURLParams = function(href) {
 
 APICache.prototype._getFileName = function(envelope) {
 	var bodyHash = ''
-	if(envelope.reqMethod === 'POST') {
-		// TODO: create body hash depending on request headers
+	if(envelope.reqMethod !== 'GET') {
 		bodyHash = ' ' + MD5(JSON.stringify(envelope.reqBody))
 	}
 	var sanitazedURL = sanitize(envelope.reqURL.replace('://', '-'), {replacement: '-'})
@@ -112,7 +115,7 @@ APICache.prototype._saveRequest = function(envelope) {
 
 	filendir.writeFile(filePath, JSON.stringify(envelope), function(err) {
 		if(err) {
-			console.log('[' + moduleName +'] File could not be saved in ' + this.config.cacheDir)
+			log('File could not be saved in ' + this.config.cacheDir)
 			throw err
 		}
 	}.bind(this))
@@ -120,6 +123,33 @@ APICache.prototype._saveRequest = function(envelope) {
 
 APICache.prototype.onError = function() {
 
+}
+/**
+ * POST, PUT methods' payload need to be taken out from request object.
+ * @param  {object} req Request object
+ */
+APICache.prototype._getRequestBody = function(req, returnReference) {
+	getRawBody(req).then(function(bodyBuffer) {
+		returnReference.requestBody = bodyBuffer.toString()
+	}.bind(this)).catch(function() {
+		log('Unhandled error in getRawBody', arguments)
+	})
+}
+
+APICache.prototype._getApiURL = function(req) {
+	var url = req.url.split('/')
+	var newURL = this.config.apiUrl.replace(/\/+$/, '')
+	if (url[0] === '') {
+		// local path, like "/api/getToken"
+		url[0] = newURL
+	} else {
+		// remote address, like "http://localhost:8080/api/getToken"
+		url.splice(0, 3) // remove local protocol and domain part
+		url.unshift(newURL) // push destination api url
+	}
+
+	url = url.join('/')
+	return this.config.localURLReplace(url)
 }
 
 /**
@@ -134,27 +164,20 @@ function APICache(config) {
 
 	this.config = objectAssign({}, defaultConfig, config)
 
-	this.onError = APICache.prototype.onError.bind(this)
-	this.onResponse = APICache.prototype.onResponse.bind(this)
-
-	var handleRequest = function(req, res, next, configOverride) {
-		var newConfig = objectAssign({}, this.config, configOverride || {})
-
-		var url = req.url.split('/')
-		url.splice(0, 3) // remove local protocol and domain part
-		url.unshift(newConfig.apiUrl.replace(/\/+$/, '')) // push destination api url
-		url = url.join('/')
-		debugger
-		if (newConfig.localURLReplace) {
-			url = newConfig.localURLReplace(url)
+	var handleRequest = function(req, res, next) {
+		var reqBodyRef = {
+			requestBody: ''
 		}
+		this._getRequestBody(req, reqBodyRef)
+
+		var url = this._getApiURL(req)
 
 		var apiReq = request(url)
 			.on('response', function(response) {
-				this.onResponse(response)
+				this.onResponse(response, reqBodyRef.requestBody)
 			}.bind(this))
 			.on('error', function(err) {
-				this.onError(err, req, res)
+				this.onError(err, req, res, next)
 			}.bind(this))
 
 		req.pipe(apiReq).pipe(res)
@@ -166,3 +189,6 @@ function APICache(config) {
 }
 
 module.exports = APICache
+
+
+// TODO: endpoint with list of all cached entries

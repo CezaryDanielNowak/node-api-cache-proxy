@@ -1,7 +1,10 @@
+/* global require, console, module, Buffer */
+
 'use strict'
 var assert = require('assert')
 var extract = require('url-querystring')
 var filendir = require('filendir')
+var fs = require('fs')
 var getRawBody = require('raw-body')
 var MD5 = require("crypto-js/md5");
 var objectAssign = require('object-assign')
@@ -10,7 +13,6 @@ var path = require('path')
 var request = require('request')
 var sanitize = require('sanitize-filename')
 var zlib = require('zlib')
-
 
 var MODULE_NAME = 'node-api-cache-proxy'
 
@@ -33,7 +35,9 @@ var defaultConfig = {
 }
 
 APICache.prototype._createEnvelope = function(response, body, res, requestBody) {
-	var excludeRequestHeaders = ['content-encoding'] // content is unpacked, content-encoding doesn't apply anymore
+	var excludeRequestHeaders = [
+		'content-encoding' // content is unpacked, content-encoding doesn't apply anymore
+	]
 	excludeRequestHeaders.push.apply(excludeRequestHeaders, this.config.excludeRequestHeaders)
 	var headers = omit(response.headers, excludeRequestHeaders)
 
@@ -100,8 +104,11 @@ APICache.prototype._getFileName = function(envelope) {
 	if(envelope.reqMethod !== 'GET') {
 		bodyHash = ' ' + MD5(JSON.stringify(envelope.reqBody))
 	}
+
 	var sanitazedURL = sanitize(envelope.reqURL.replace('://', '-'), {replacement: '-'})
-	return envelope.reqMethod + '_' + sanitazedURL + bodyHash +'.tmp'
+	var fileName = envelope.reqMethod + '_' + sanitazedURL + bodyHash +'.tmp'
+
+	return path.resolve(this.config.cacheDir, fileName)
 }
 
 /**
@@ -110,8 +117,7 @@ APICache.prototype._getFileName = function(envelope) {
  * @return {none}
  */
 APICache.prototype._saveRequest = function(envelope) {
-	var fileName = this._getFileName(envelope)
-	var filePath = path.resolve(this.config.cacheDir, fileName)
+	var filePath = this._getFileName(envelope)
 
 	filendir.writeFile(filePath, JSON.stringify(envelope), function(err) {
 		if(err) {
@@ -121,8 +127,28 @@ APICache.prototype._saveRequest = function(envelope) {
 	}.bind(this))
 }
 
-APICache.prototype.onError = function() {
+APICache.prototype.onError = function(err, req, apiReq, res, requestBody, next) {
+	// err: {"code":"ENOTFOUND","errno":"ENOTFOUND","syscall":"getaddrinfo","hostname":"XYZ"}
+	//
+	var envelope = {
+		reqMethod: apiReq.method,
+		reqURL: apiReq.url || apiReq.href,
+		reqBody: requestBody
+	}
 
+	var filePath = this._getFileName(envelope)
+	fs.readFile(filePath, function (err, data) {
+		if (err) {
+			next()
+		}
+		var dataEnvelope = JSON.parse(data)
+		res.set(dataEnvelope.headers)
+		res.sendStatus(dataEnvelope.statusCode)//.send(dataEnvelope.statusMessage)
+		res.send(dataEnvelope.body)
+		res.end()
+	})
+
+	return false
 }
 /**
  * POST, PUT methods' payload need to be taken out from request object.
@@ -171,18 +197,24 @@ function APICache(config) {
 		this._getRequestBody(req, reqBodyRef)
 
 		var url = this._getApiURL(req)
+		return new Promise(function(resolve, reject) {
+			var apiReq = request(url)
+				.on('response', function(response) {
+					debugger
+					this.onResponse(response, reqBodyRef.requestBody)
+					resolve()
+				}.bind(this))
+				.on('error', function(err) {
+					log('onerror')
+					if(this.onError(err, req, apiReq, res, reqBodyRef.requestBody, next) === false) {
+						reject()
+					} else {
+						resolve()
+					}
+				}.bind(this))
 
-		var apiReq = request(url)
-			.on('response', function(response) {
-				this.onResponse(response, reqBodyRef.requestBody)
-			}.bind(this))
-			.on('error', function(err) {
-				this.onError(err, req, res, next)
-			}.bind(this))
-
-		req.pipe(apiReq).pipe(res)
-
-		return apiReq
+			req.pipe(apiReq).pipe(res)
+		}.bind(this))
 	}
 
 	return objectAssign(handleRequest.bind(this), this)

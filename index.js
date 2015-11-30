@@ -32,7 +32,8 @@ var defaultConfig = {
 	},
 	localURLReplace: function(url) {
 		return url
-	}
+	},
+	timeout: false
 }
 
 APICache.prototype._createEnvelope = function(response, responseBody, requestBody) {
@@ -97,26 +98,26 @@ APICache.prototype.sendCachedResponse = function(res, envelope, resolve, reject)
 		var data = fs.readFileSync(filePath, 'utf-8')
 	} catch(e) {
 		reject(envelope)
-		if (res.headersSent) { // in case of custom error handling in promise.catch
-			this.sendResponse(res, envelope.statusCode, envelope.headers, envelope.body)
-		}
+		this.sendResponse(res, envelope.statusCode, envelope.headers, envelope.body)
 		return false
 	}
 	var cachedEnvelope = JSON.parse(data)
 	var headers = cachedEnvelope.headers
 	headers[MODULE_NAME + '-hit-date'] = cachedEnvelope.cacheDate
 
-	this.sendResponse(res, cachedEnvelope.statusCode, headers, cachedEnvelope.body)
 	resolve({
 		dataSource: "Cache",
-		sourceFile: filePath,
+		filePath: filePath,
 		envelope: cachedEnvelope
 	})
+	this.sendResponse(res, cachedEnvelope.statusCode, headers, cachedEnvelope.body)
 }
 
 APICache.prototype.sendResponse = function(res, statusCode, headers, body) {
-	res.writeHead(statusCode ? statusCode : 500, headers);
-	res.end(body)
+	if (!res.headersSent) { // in case of custom error handling in promise.catch
+		res.writeHead(statusCode ? statusCode : 500, headers);
+		res.end(body)
+	}
 }
 
 /**
@@ -171,7 +172,7 @@ APICache.prototype.onError = function(err, apiReq, res, requestBody, resolve, re
 		reqBody: requestBody
 	}
 
-	this.sendCachedResponse(res, envelope, reject, resolve)
+	this.sendCachedResponse(res, envelope, resolve, reject)
 }
 /**
  * POST, PUT methods' payload need to be taken out from request object.
@@ -223,16 +224,23 @@ function APICache(config) {
 		var promise = new Promise(function(resolve, reject) {
 			var apiReq = request(url)
 
-			req.pipe(apiReq)
-				.on('response', function(response) {
-					this.onResponse(response, res, reqBodyRef.requestBody, resolve, reject)
-				}.bind(this))
-				.on('error', function(err) {
-					this.onError(err, apiReq, res, reqBodyRef.requestBody, resolve, reject)
-					promise.catch(function() {
-						log('API Error', url, err)
-					})
-				}.bind(this))
+			req
+			.pipe(apiReq)
+			.on('response', function(response) {
+				this.onResponse(response, res, reqBodyRef.requestBody, resolve, reject)
+			}.bind(this))
+			.on('error', function(err) {
+				this.onError(err, apiReq, res, reqBodyRef.requestBody, resolve, reject)
+				promise.catch(function() {
+					log('API Error', url, err)
+				})
+			}.bind(this))
+
+			if (this.config.timeout) {
+				setTimeout(function (argument) {
+					apiReq.abort()
+				}, this.config.timeout)
+			}
 		}.bind(this))
 
 		return promise

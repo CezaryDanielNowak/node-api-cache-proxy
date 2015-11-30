@@ -59,8 +59,12 @@ API
     - when `true` is returned, request will be saved and ready to use
     - when `false` is returned, request won't be saved and cache entry will be
       served instead (if available)
+- `timeout` {object}:  Milliseconds, helps terminating requests for really
+  slow backends.
 
-`requestEnvelope` sample:
+
+`requestEnvelope` format:
+------
 ```
 	{
 		reqURL: 'http://my-api.local/method/route?action=sth',
@@ -86,9 +90,9 @@ var apiCache = new APICacheProxy({...})
 var app = express()
 
 app.use('/api', function(req, res, next) {
-	apiCacheProxy(req, res, next).catch(function(envelope) {
-		res.status(envelope.statusCode).send(
-			'<pre>' + envelope.body + '</pre>'
+	apiCacheProxy(req, res, next).catch(function(requestEnvelope) {
+		res.status(requestEnvelope.statusCode).send(
+			'<pre>' + requestEnvelope.body + '</pre>'
 		)
 	})
 })
@@ -101,9 +105,9 @@ var apiCache = new APICacheProxy({...})
 var app = express()
 
 app.use('/api', function(req, res, next) {
-	apiCacheProxy(req, res, next).then(function(status, envelope) {
+	apiCacheProxy(req, res, next).then(function(status) {
 		if (status.dataSource === 'Cache') {
-			console.warn('[' + envelope.method + '] ' + envelope.reqURL)
+			console.warn('[' + status.envelope.reqMethod + '] ' + status.envelope.reqURL)
 			console.warn('  API failure. Served: ' + status.filePath)
 		}
 	})

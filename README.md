@@ -24,6 +24,7 @@ var APICacheProxy = require('node-api-cache-proxy')
 
 var app = express()
 var apiCache = new APICacheProxy({
+	apiUrl: config.testServer.apiBaseUrl,
 	cacheDir: 'cache-api/',
 	excludeRequestHeaders: [
 		'Cookie', 'User-Agent', 'User-Agent', 'Referer', 'Origin', 'Host', 'DNT'
@@ -37,7 +38,6 @@ var apiCache = new APICacheProxy({
 			return false;
 		}
 	},
-	apiUrl: config.testServer.apiBaseUrl,
 	localURLReplace: function(url) {
 		return url.replace('/api/', '')
 	}
@@ -73,8 +73,24 @@ API
 		statusCode: response.statusCode,
 		statusMessage: response.statusMessage,
 
-		_hitDate: "2015-11-30 01:35:53"
+		cacheDate: "2015-11-30 01:35:53"
 	}
+```
+
+Error Handling
+------
+```
+var apiCache = new APICacheProxy({...})
+var app = express()
+
+app.use('/api', function(req, res, next) {
+	apiCacheProxy(req, res, next).catch(function(envelope) {
+		// custom error handler
+		res.status(envelope.statusCode).send(
+			'<pre>' + envelope.body + '</pre>'
+		)
+	})
+})
 ```
 
 API data format support table

@@ -19,6 +19,7 @@ var MODULE_NAME = 'node-api-cache-proxy'
 var log = console.log.bind(console, '[' + MODULE_NAME + '] ')
 
 var defaultConfig = {
+	apiUrl: '',
 	cacheDir: '',
 	excludeRequestHeaders: [],
 	excludeRequestParams: [],
@@ -42,7 +43,7 @@ APICache.prototype._createEnvelope = function(response, responseBody, requestBod
 	var headers = omit(response.headers, excludeRequestHeaders)
 
 	return {
-		_hitDate: new Date().toISOString().substr(0, 19).replace('T', ' '),
+		cacheDate: new Date().toISOString().substr(0, 19).replace('T', ' '),
 		reqURL: this._clearURLParams(response.request.href),
 		reqMethod: response.request.method,
 		reqHeaders: response.request.headers,
@@ -91,13 +92,15 @@ APICache.prototype.sendCachedResponse = function(res, envelope, resolve, reject)
 	try {
 		var data = fs.readFileSync(filePath, 'utf-8')
 	} catch(e) {
-		this.sendResponse(res, envelope.statusCode, envelope.headers, envelope.body)
-		reject()
+		reject(envelope)
+		if (res.headersSent) { // in case of custom error handling in promise.catch
+			this.sendResponse(res, envelope.statusCode, envelope.headers, envelope.body)
+		}
 		return false
 	}
 	var cachedEnvelope = JSON.parse(data)
 	var headers = cachedEnvelope.headers
-	headers[MODULE_NAME + '-hit-date'] = cachedEnvelope._hitDate || 'Unknown'
+	headers[MODULE_NAME + '-hit-date'] = cachedEnvelope.cacheDate
 
 	this.sendResponse(res, cachedEnvelope.statusCode, headers, cachedEnvelope.body)
 	resolve()

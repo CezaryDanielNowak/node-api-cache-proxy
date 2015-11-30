@@ -79,19 +79,37 @@ API
 
 Error Handling
 ------
+Custom error handler, executed when API response doesn't pass
+`isValidResponse` test, and there is no cached response:
 ```
 var apiCache = new APICacheProxy({...})
 var app = express()
 
 app.use('/api', function(req, res, next) {
 	apiCacheProxy(req, res, next).catch(function(envelope) {
-		// custom error handler
 		res.status(envelope.statusCode).send(
 			'<pre>' + envelope.body + '</pre>'
 		)
 	})
 })
 ```
+
+Handle case, when API response doesn't pass `isValidResponse` test but there is
+cached response:
+```
+var apiCache = new APICacheProxy({...})
+var app = express()
+
+app.use('/api', function(req, res, next) {
+	apiCacheProxy(req, res, next).then(function(status, envelope) {
+		if (status.dataSource === 'Cache') {
+			console.warn('[' + envelope.method + '] ' + envelope.reqURL)
+			console.warn('  API failure. Served: ' + status.filePath)
+		}
+	})
+})
+```
+
 
 API data format support table
 ------

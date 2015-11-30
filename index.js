@@ -81,6 +81,10 @@ APICache.prototype.onResponse = function(apiResponse, res, requestBody, resolve,
 		if (this.config.isValidResponse(envelope)) {
 			this._saveRequest(envelope)
 			this.sendResponse(res, envelope.statusCode, envelope.headers, envelope.body)
+			resolve({
+				dataSource: "API",
+				envelope: envelope
+			})
 		} else {
 			this.sendCachedResponse(res, envelope, resolve, reject)
 		}
@@ -103,7 +107,11 @@ APICache.prototype.sendCachedResponse = function(res, envelope, resolve, reject)
 	headers[MODULE_NAME + '-hit-date'] = cachedEnvelope.cacheDate
 
 	this.sendResponse(res, cachedEnvelope.statusCode, headers, cachedEnvelope.body)
-	resolve()
+	resolve({
+		dataSource: "Cache",
+		sourceFile: filePath,
+		envelope: cachedEnvelope
+	})
 }
 
 APICache.prototype.sendResponse = function(res, statusCode, headers, body) {
@@ -225,8 +233,6 @@ function APICache(config) {
 						log('API Error', url, err)
 					})
 				}.bind(this))
-
-
 		}.bind(this))
 
 		return promise

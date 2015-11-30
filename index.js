@@ -55,7 +55,7 @@ APICache.prototype._createEnvelope = function(response, responseBody, requestBod
 	}
 }
 
-APICache.prototype.onResponse = function(res, apiResponse, requestBody, resolve, reject) {
+APICache.prototype.onResponse = function(apiResponse, res, requestBody, resolve, reject) {
 	var body = []
 
 	apiResponse.on('data', function(chunk) {
@@ -153,7 +153,7 @@ APICache.prototype._saveRequest = function(envelope) {
 	}.bind(this))
 }
 
-APICache.prototype.onError = function(err, apiReq, res, requestBody, reject, resolve) {
+APICache.prototype.onError = function(err, apiReq, res, requestBody, resolve, reject) {
 	var envelope = { // this envelope is used just in _getFileName
 		reqMethod: apiReq.method,
 		reqURL: this._clearURLParams(apiReq.url || apiReq.href),
@@ -202,7 +202,7 @@ function APICache(config) {
 
 	this.config = objectAssign({}, defaultConfig, config)
 
-	var handleRequest = function(req, res, next) {
+	var handleRequest = function(req, res) {
 		var reqBodyRef = {
 			requestBody: ''
 		}
@@ -214,10 +214,10 @@ function APICache(config) {
 
 			req.pipe(apiReq)
 				.on('response', function(response) {
-					this.onResponse(res, response, reqBodyRef.requestBody, resolve, reject)
+					this.onResponse(response, res, reqBodyRef.requestBody, resolve, reject)
 				}.bind(this))
 				.on('error', function(err) {
-					this.onError(err, apiReq, res, reqBodyRef.requestBody, reject, resolve)
+					this.onError(err, apiReq, res, reqBodyRef.requestBody, resolve, reject)
 					promise.catch(function() {
 						log('API Error', url, err)
 					})

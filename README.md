@@ -29,7 +29,7 @@ var apiCache = new APICacheProxy({
 		'Cookie', 'User-Agent', 'User-Agent', 'Referer', 'Origin', 'Host', 'DNT'
 	],
 	excludeRequestParams: ['_'],
-	shouldSave: function(requestEnvelope) {
+	isValidResponse: function(requestEnvelope) {
 		// this is default validation function, feel free to override it
 		if (requestEnvelope.statusCode === 200) {
 			return true;
@@ -53,16 +53,12 @@ API
 - `apiUrl` {string, required}: Directory to save requests
 - `cacheDir` {string, required}: Directory to save requests
 - `excludeRequestHeaders` {array, required}: headers to ommit when writing or reading cache file
-- `excludeRequestParams` {array}: usually cache parameter from your request
+- `excludeRequestParams` {array}: usually cache parameter from your request address
 - `localURLReplace(url: string)` {function}: prepare url to API
-- `shouldSave` {function(requestEnvelope: Object)}: Check if API response is valid or not.
+- `isValidResponse` {function(requestEnvelope: Object)}: Check if API response is valid or not.
     - when `true` is returned, request will be saved and ready to use
     - when `false` is returned, request won't be saved and cache entry will be
       served instead (if available)
-
-`apiCache.onResponse(response, req, res)`
-
-`apiCache.onError(error, req, res, callback)`
 
 `requestEnvelope` sample:
 ```
@@ -75,10 +71,11 @@ API
 		body: body,
 		headers: response.headers,
 		statusCode: response.statusCode,
-		statusMessage: response.statusMessage
+		statusMessage: response.statusMessage,
+
+		_hitDate: "2015-11-30 01:35:53"
 	}
 ```
-
 
 API data format support table
 ------

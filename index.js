@@ -22,7 +22,7 @@ var defaultConfig = {
 	cacheDir: '',
 	excludeRequestHeaders: [],
 	excludeRequestParams: [],
-	shouldSave: function(envelope) {
+	isValidResponse: function(envelope) {
 		if (envelope.statusCode === 200) {
 			return true
 		} else {
@@ -34,7 +34,7 @@ var defaultConfig = {
 	}
 }
 
-APICache.prototype._createEnvelope = function(response, body, res, requestBody) {
+APICache.prototype._createEnvelope = function(response, responseBody, requestBody) {
 	var excludeRequestHeaders = [
 		'content-encoding' // content is unpacked, content-encoding doesn't apply anymore
 	]
@@ -42,30 +42,31 @@ APICache.prototype._createEnvelope = function(response, body, res, requestBody) 
 	var headers = omit(response.headers, excludeRequestHeaders)
 
 	return {
+		_hitDate: new Date().toISOString().substr(0, 19).replace('T', ' '),
 		reqURL: this._clearURLParams(response.request.href),
 		reqMethod: response.request.method,
 		reqHeaders: response.request.headers,
 		reqBody: requestBody,
 
-		body: body,
+		body: responseBody,
 		headers: headers,
 		statusCode: response.statusCode,
 		statusMessage: response.statusMessage
 	}
 }
 
-APICache.prototype.onResponse = function(response, requestBody) {
+APICache.prototype.onResponse = function(res, apiResponse, requestBody, resolve, reject) {
 	var body = []
 
-	response.on('data', function(chunk) {
+	apiResponse.on('data', function(chunk) {
 		// Data is Buffer when gzip, text when not-gzip
 		body.push(chunk)
 	})
 
-	response.on('end', function () {
+	apiResponse.on('end', function () {
 		// Thanks, Nick Fishman
 		// http://nickfishman.com/post/49533681471/nodejs-http-requests-with-gzip-deflate-compression
-		var encoding = response.headers['content-encoding']
+		var encoding = apiResponse.headers['content-encoding']
 		var buffer = Buffer.concat(body)
 		if (encoding === 'gzip') {
 			body = zlib.gunzipSync(buffer)
@@ -74,12 +75,37 @@ APICache.prototype.onResponse = function(response, requestBody) {
 		}
 		body = body ? body.toString() : ''
 
-		var envelope = this._createEnvelope(response, body, null, requestBody)
+		var envelope = this._createEnvelope(apiResponse, body, requestBody)
 
-		if (this.config.shouldSave(envelope)) {
+		if (this.config.isValidResponse(envelope)) {
 			this._saveRequest(envelope)
+			this.sendResponse(res, envelope.statusCode, envelope.headers, envelope.body)
+		} else {
+			this.sendCachedResponse(res, envelope, resolve, reject)
 		}
 	}.bind(this))
+}
+
+APICache.prototype.sendCachedResponse = function(res, envelope, resolve, reject) {
+	var filePath = this._getFileName(envelope)
+	try {
+		var data = fs.readFileSync(filePath, 'utf-8')
+	} catch(e) {
+		this.sendResponse(res, envelope.statusCode, envelope.headers, envelope.body)
+		reject()
+		return false
+	}
+	var cachedEnvelope = JSON.parse(data)
+	var headers = cachedEnvelope.headers
+	headers[MODULE_NAME + '-hit-date'] = cachedEnvelope._hitDate || 'Unknown'
+
+	this.sendResponse(res, cachedEnvelope.statusCode, headers, cachedEnvelope.body)
+	resolve()
+}
+
+APICache.prototype.sendResponse = function(res, statusCode, headers, body) {
+	res.writeHead(statusCode ? statusCode : 500, headers);
+	res.end(body)
 }
 
 /**
@@ -127,28 +153,14 @@ APICache.prototype._saveRequest = function(envelope) {
 	}.bind(this))
 }
 
-APICache.prototype.onError = function(err, req, apiReq, res, requestBody, next) {
-	// err: {"code":"ENOTFOUND","errno":"ENOTFOUND","syscall":"getaddrinfo","hostname":"XYZ"}
-	//
-	var envelope = {
+APICache.prototype.onError = function(err, apiReq, res, requestBody, reject, resolve) {
+	var envelope = { // this envelope is used just in _getFileName
 		reqMethod: apiReq.method,
-		reqURL: apiReq.url || apiReq.href,
+		reqURL: this._clearURLParams(apiReq.url || apiReq.href),
 		reqBody: requestBody
 	}
 
-	var filePath = this._getFileName(envelope)
-	fs.readFile(filePath, function (err, data) {
-		if (err) {
-			next()
-		}
-		var dataEnvelope = JSON.parse(data)
-		res.set(dataEnvelope.headers)
-		res.sendStatus(dataEnvelope.statusCode)//.send(dataEnvelope.statusMessage)
-		res.send(dataEnvelope.body)
-		res.end()
-	})
-
-	return false
+	this.sendCachedResponse(res, envelope, reject, resolve)
 }
 /**
  * POST, PUT methods' payload need to be taken out from request object.
@@ -197,30 +209,29 @@ function APICache(config) {
 		this._getRequestBody(req, reqBodyRef)
 
 		var url = this._getApiURL(req)
-		return new Promise(function(resolve, reject) {
+		var promise = new Promise(function(resolve, reject) {
 			var apiReq = request(url)
+
+			req.pipe(apiReq)
 				.on('response', function(response) {
-					debugger
-					this.onResponse(response, reqBodyRef.requestBody)
-					resolve()
+					this.onResponse(res, response, reqBodyRef.requestBody, resolve, reject)
 				}.bind(this))
 				.on('error', function(err) {
-					log('onerror')
-					if(this.onError(err, req, apiReq, res, reqBodyRef.requestBody, next) === false) {
-						reject()
-					} else {
-						resolve()
-					}
+					this.onError(err, apiReq, res, reqBodyRef.requestBody, reject, resolve)
+					promise.catch(function() {
+						log('API Error', url, err)
+					})
 				}.bind(this))
 
-			req.pipe(apiReq).pipe(res)
+
 		}.bind(this))
+
+		return promise
 	}
 
 	return objectAssign(handleRequest.bind(this), this)
 }
 
 module.exports = APICache
-
 
 // TODO: endpoint with list of all cached entries

@@ -1,6 +1,6 @@
 {
   "name": "node-api-cache-proxy",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Cache requests in nodejs",
   "main": "index.js",
   "scripts": {

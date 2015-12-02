@@ -9,6 +9,7 @@ var getRawBody = require('raw-body')
 var MD5 = require("crypto-js/md5");
 var objectAssign = require('object-assign')
 var omit = require('object.omit')
+var packageJson = require('./package.json')
 var path = require('path')
 var request = require('request')
 var sanitize = require('sanitize-filename')
@@ -20,6 +21,7 @@ var log = console.log.bind(console, '[' + MODULE_NAME + '] ')
 
 var defaultConfig = {
 	apiUrl: '',
+	cacheEnabled: true,
 	cacheDir: '',
 	excludeRequestHeaders: [],
 	excludeRequestParams: [],
@@ -39,7 +41,9 @@ var defaultConfig = {
 APICache.prototype._createEnvelope = function(response, responseBody, requestBody) {
 	var excludeRequestHeaders = [
 		'content-encoding', // content is unpacked, content-encoding doesn't apply anymore,
-		'content-length' // when content is uncpacked, content-length is different.
+		'content-length', // when content is uncpacked, content-length is different.
+		'connection',
+		'transfer-encoding'
 	]
 	excludeRequestHeaders.push.apply(excludeRequestHeaders, this.config.excludeRequestHeaders)
 	var headers = omit(response.headers, excludeRequestHeaders)
@@ -54,7 +58,8 @@ APICache.prototype._createEnvelope = function(response, responseBody, requestBod
 		body: responseBody,
 		headers: headers,
 		statusCode: response.statusCode,
-		statusMessage: response.statusMessage
+		statusMessage: response.statusMessage,
+		version: packageJson.version
 	}
 }
 
@@ -66,7 +71,7 @@ APICache.prototype.onResponse = function(apiResponse, res, requestBody, resolve,
 		body.push(chunk)
 	})
 
-	apiResponse.on('end', function () {
+	apiResponse.on('end', function() {
 		// Thanks, Nick Fishman
 		// http://nickfishman.com/post/49533681471/nodejs-http-requests-with-gzip-deflate-compression
 		var encoding = apiResponse.headers['content-encoding']
@@ -94,15 +99,20 @@ APICache.prototype.onResponse = function(apiResponse, res, requestBody, resolve,
 }
 
 APICache.prototype.sendCachedResponse = function(res, envelope, resolve, reject) {
-	var filePath = this._getFileName(envelope)
+	var cachedEnvelope,
+			filePath = this._getFileName(envelope)
 	try {
 		var data = fs.readFileSync(filePath, 'utf-8')
+		cachedEnvelope = JSON.parse(data)
+		if (cachedEnvelope.version !== packageJson.version) {
+			throw new Error("Request envelope created in old plugin version.")
+		}
 	} catch(e) {
 		reject(envelope)
 		this.sendResponse(res, envelope.statusCode, envelope.headers, envelope.body)
 		return false
 	}
-	var cachedEnvelope = JSON.parse(data)
+
 	var headers = cachedEnvelope.headers
 	headers[MODULE_NAME + '-hit-date'] = cachedEnvelope.cacheDate
 
@@ -131,7 +141,7 @@ APICache.prototype._clearURLParams = function(href) {
 	var url = extract(href)
 	var queryObj = omit(url.qs, this.config.excludeRequestParams)
 
-	var urlString = Object.keys(queryObj).map(function (paramName) {
+	var urlString = Object.keys(queryObj).map(function(paramName) {
 		return paramName + '=' + encodeURIComponent(queryObj[paramName])
 	}).join('&')
 
@@ -209,8 +219,6 @@ APICache.prototype._getApiURL = function(req) {
  */
 function APICache(config) {
 	assert(config, 'APICache requres config provided')
-	assert(config.cacheDir, 'APICache: provide cacheDir')
-	assert(config.excludeRequestHeaders, 'APICache: provide excludeRequestHeaders')
 	assert(config.apiUrl, 'APICache: provide apiUrl')
 
 	this.config = objectAssign({}, defaultConfig, config)
@@ -225,20 +233,30 @@ function APICache(config) {
 		var promise = new Promise(function(resolve, reject) {
 			var apiReq = request(url)
 
-			req
-			.pipe(apiReq)
-			.on('response', function(response) {
-				this.onResponse(response, res, reqBodyRef.requestBody, resolve, reject)
-			}.bind(this))
-			.on('error', function(err) {
-				this.onError(err, apiReq, res, reqBodyRef.requestBody, resolve, reject)
-				promise.catch(function() {
-					log('API Error', url, err)
-				})
-			}.bind(this))
+			if (this.config.cacheEnabled) {
+				req
+				.pipe(apiReq)
+				.on('response', function(response) {
+					this.onResponse(response, res, reqBodyRef.requestBody, resolve, reject)
+				}.bind(this))
+				.on('error', function(err) {
+					this.onError(err, apiReq, res, reqBodyRef.requestBody, resolve, reject)
+					promise.catch(function() {
+						log('API Error', url, err)
+					})
+				}.bind(this))
+			} else {
+				req.pipe(apiReq).pipe(res)
 
+				apiReq.on('response', function() {
+					resolve({dataSource: "API"})
+				})
+				apiReq.on('error', function(err) {
+					reject(err)
+				})
+			}
 			if (this.config.timeout) {
-				setTimeout(function (argument) {
+				setTimeout(function() {
 					apiReq.abort()
 				}, this.config.timeout)
 			}

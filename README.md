@@ -67,9 +67,10 @@ app.use('/api', apiCacheProxy)
 API
 ------
 `var apiCache = new APICache(config)`, config:
+- `cacheEnabled` {boolean}: When false, plugin will work as proxy, without caching.
 - `apiUrl` {string, required}: Proxy replaces protocol, domain part with apiUrl
-- `cacheDir` {string, required}: Directory to save requests
-- `excludeRequestHeaders` {array, required}: headers to ommit when writing or reading cache file
+- `cacheDir` {string}: Directory to save requests
+- `excludeRequestHeaders` {array}: headers to ommit when writing or reading cache file
 - `excludeRequestParams` {array}: usually cache parameter from your request address
 - `localURLReplace(url: string)` {function}: prepare url to API
 - `isValidResponse` {function(requestEnvelope: Object)}: Check if API response is valid or not.
@@ -93,7 +94,8 @@ API
 		statusCode: response.statusCode,
 		statusMessage: response.statusMessage,
 
-		cacheDate: "2015-11-30 01:35:53"
+		cacheDate: "2015-11-30 01:35:53",
+		version: "0.6.1"
 	}
 ```
 

@@ -42,7 +42,6 @@ var APICacheProxy = require('node-api-cache-proxy')
 var app = express()
 var apiCacheProxy = new APICacheProxy({
 	apiUrl: 'http://destination-backend-url.com',
-	cacheDir: 'cache-api/',
 	excludeRequestHeaders: [
 		'Cookie', 'User-Agent', 'User-Agent', 'Referer', 'Origin', 'Host', 'DNT'
 	],
@@ -70,7 +69,7 @@ API
 - `cacheEnabled` {boolean}: When false, plugin will work as proxy, without caching.
 - `apiUrl` {string, required}: Proxy replaces protocol, domain part with apiUrl
 - `cacheDir` {string}: Directory to save requests
-- `excludeRequestHeaders` {array}: headers to ommit when writing or reading cache file
+- `excludeRequestHeaders` {array}: headers to omit when writing or reading cache file
 - `excludeRequestParams` {array}: usually cache parameter from your request address
 - `localURLReplace(url: string)` {function}: prepare url to API
 - `isValidResponse` {function(requestEnvelope: Object)}: Check if API response is valid or not.
@@ -82,12 +81,12 @@ API
 
 `requestEnvelope` format:
 ------
-```json
+```
 	{
 		reqURL: 'http://my-api.local/method/route?action=sth',
-		reqMethod: 'GET',
+		reqMethod: 'POST',
 		reqHeaders: response.request.headers,
-		reqBody: 'request=a&body=is&just=for&POST=:)',
+		reqBody: 'request=a&body=is&just=for&POST=PUT,etc:)',
 
 		body: body,
 		headers: response.headers,
@@ -144,3 +143,8 @@ API data format support table
 | binary content        | No            |
 | https                 | Yes           |
 | POST, GET, PUT, ...   | Yes           |
+
+Requirements
+------
+This module is maintained on node v0.12.7. It may work on older and newer node
+versions. Feel free to test and send me a feedback :-)

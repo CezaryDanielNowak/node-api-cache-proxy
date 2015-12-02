@@ -1,30 +1,47 @@
 Node API Cache Proxy
 ======
 When API is down, work may be hard for front-end developer.
-Configure api cache to mock REST API responses.
+Configure api cache to fallback REST API responses.
 
-API not responding.
 
 ![API not responding.](docs/OqWCFTn.gif)
+“API not responding”
+
 
 How it works?
 ------
-- Spy for API calls
+- Works as middleware for API calls
 - Save responses depending on address, headers and request payload
 - Serves cached data, when API is down
 
 
 How to use
 ------
-
-Sample using Express:
-```
+Minimal using Express:
+```js
 var express = require('express')
 var APICacheProxy = require('node-api-cache-proxy')
 
 var app = express()
-var apiCache = new APICacheProxy({
-	apiUrl: config.testServer.apiBaseUrl,
+var apiCacheProxy = new APICacheProxy({
+	apiUrl: 'http://destination-api-url.com',
+	cacheDir: 'cache-api/',
+	localURLReplace: function(url) {
+		return url.replace('/api/', '/')
+	}
+})
+
+app.use('/api', apiCacheProxy)
+```
+
+Sample using Express:
+```js
+var express = require('express')
+var APICacheProxy = require('node-api-cache-proxy')
+
+var app = express()
+var apiCacheProxy = new APICacheProxy({
+	apiUrl: 'http://destination-backend-url.com',
 	cacheDir: 'cache-api/',
 	excludeRequestHeaders: [
 		'Cookie', 'User-Agent', 'User-Agent', 'Referer', 'Origin', 'Host', 'DNT'
@@ -39,7 +56,7 @@ var apiCache = new APICacheProxy({
 		}
 	},
 	localURLReplace: function(url) {
-		return url.replace('/api/', '')
+		return url.replace('/api/', '/')
 	}
 })
 
@@ -50,7 +67,7 @@ app.use('/api', apiCacheProxy)
 API
 ------
 `var apiCache = new APICache(config)`, config:
-- `apiUrl` {string, required}: Directory to save requests
+- `apiUrl` {string, required}: Proxy replaces protocol, domain part with apiUrl
 - `cacheDir` {string, required}: Directory to save requests
 - `excludeRequestHeaders` {array, required}: headers to ommit when writing or reading cache file
 - `excludeRequestParams` {array}: usually cache parameter from your request address
@@ -59,13 +76,12 @@ API
     - when `true` is returned, request will be saved and ready to use
     - when `false` is returned, request won't be saved and cache entry will be
       served instead (if available)
-- `timeout` {object}:  Milliseconds, helps terminating requests for really
-  slow backends.
+- `timeout` {object}:  Milliseconds, helps terminating requests for really slow backends.
 
 
 `requestEnvelope` format:
 ------
-```
+```json
 	{
 		reqURL: 'http://my-api.local/method/route?action=sth',
 		reqMethod: 'GET',
@@ -85,7 +101,7 @@ Error Handling
 ------
 Custom error handler, executed when API response doesn't pass
 `isValidResponse` test, and there is no cached response:
-```
+```js
 var apiCache = new APICacheProxy({...})
 var app = express()
 
@@ -100,7 +116,7 @@ app.use('/api', function(req, res, next) {
 
 Handle case, when API response doesn't pass `isValidResponse` test but there is
 cached response:
-```
+```js
 var apiCache = new APICacheProxy({...})
 var app = express()
 

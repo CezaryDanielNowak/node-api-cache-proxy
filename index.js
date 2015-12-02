@@ -38,7 +38,8 @@ var defaultConfig = {
 
 APICache.prototype._createEnvelope = function(response, responseBody, requestBody) {
 	var excludeRequestHeaders = [
-		'content-encoding' // content is unpacked, content-encoding doesn't apply anymore
+		'content-encoding', // content is unpacked, content-encoding doesn't apply anymore,
+		'content-length' // when content is uncpacked, content-length is different.
 	]
 	excludeRequestHeaders.push.apply(excludeRequestHeaders, this.config.excludeRequestHeaders)
 	var headers = omit(response.headers, excludeRequestHeaders)

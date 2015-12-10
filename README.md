@@ -14,6 +14,11 @@ How it works?
 - Save responses depending on address, headers and request payload
 - Serves cached data, when API is down
 
+How to install
+------
+```
+npm install --save node-api-cache-proxy
+```
 
 How to use
 ------

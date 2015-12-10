@@ -81,6 +81,8 @@ objectAssign(APICache.prototype, {
 				body = zlib.gunzipSync(buffer)
 			} else if (encoding == 'deflate') {
 				body = zlib.inflateSync(buffer)
+			} else {
+				body = buffer
 			}
 			body = body ? body.toString() : ''
 

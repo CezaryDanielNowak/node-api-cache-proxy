@@ -14,6 +14,7 @@
   "homepage": "https://github.com/CezaryDanielNowak/node-api-cache-proxy",
   "dependencies": {
     "express": "4.13.3",
-    "node-api-cache-proxy": "0.6.2"
+    "node-api-cache-proxy": "0.6.2",
+    "open": "0.0.5"
   }
 }

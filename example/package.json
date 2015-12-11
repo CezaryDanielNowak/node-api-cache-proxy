@@ -1,0 +1,19 @@
+{
+  "name": "node-api-cache-proxy-example",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CezaryDanielNowak/node-api-cache-proxy.git"
+  },
+  "license": "ISC",
+  "homepage": "https://github.com/CezaryDanielNowak/node-api-cache-proxy",
+  "dependencies": {
+    "express": "4.13.3",
+    "node-api-cache-proxy": "0.6.2"
+  }
+}

@@ -6,7 +6,7 @@ var extract = require('url-querystring')
 var filendir = require('filendir')
 var fs = require('fs')
 var getRawBody = require('raw-body')
-var MD5 = require("crypto-js/md5");
+var MD5 = require('crypto-js/md5');
 var objectAssign = require('object-assign')
 var omit = require('object.omit')
 var packageJson = require('./package.json')
@@ -92,7 +92,7 @@ objectAssign(APICache.prototype, {
 				this._saveRequest(envelope)
 				this.sendResponse(res, envelope.statusCode, envelope.headers, envelope.body)
 				resolve({
-					dataSource: "API",
+					dataSource: 'API',
 					envelope: envelope
 				})
 			} else {
@@ -108,7 +108,7 @@ objectAssign(APICache.prototype, {
 			var data = fs.readFileSync(filePath, 'utf-8')
 			cachedEnvelope = JSON.parse(data)
 			if (cachedEnvelope.version !== packageJson.version) {
-				throw new Error("Request envelope created in old plugin version.")
+				throw new Error('Request envelope created in old plugin version.')
 			}
 		} catch(e) {
 			reject(envelope)
@@ -120,7 +120,7 @@ objectAssign(APICache.prototype, {
 		headers[MODULE_NAME + '-hit-date'] = cachedEnvelope.cacheDate
 
 		resolve({
-			dataSource: "Cache",
+			dataSource: 'Cache',
 			filePath: filePath,
 			envelope: cachedEnvelope
 		})
@@ -196,7 +196,7 @@ objectAssign(APICache.prototype, {
 	_getRequestBody: function(req, returnReference) {
 		getRawBody(req).then(function(bodyBuffer) {
 			returnReference.requestBody = bodyBuffer.toString()
-		}.bind(this)).catch(function() {
+		}).catch(function() {
 			log('Unhandled error in getRawBody', arguments)
 		})
 	},
@@ -253,7 +253,7 @@ function APICache(config) {
 				req.pipe(apiReq).pipe(res)
 
 				apiReq.on('response', function() {
-					resolve({dataSource: "API"})
+					resolve({dataSource: 'API'})
 				})
 				apiReq.on('error', function(err) {
 					reject(err)

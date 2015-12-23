@@ -179,7 +179,7 @@ objectAssign(APICache.prototype, {
 		}.bind(this))
 	},
 
-	onError: function(err, apiReq, res, requestBody, resolve, reject) {
+	onError: function(apiReq, res, requestBody, resolve, reject) {
 		var envelope = { // this envelope is used just in _getFileName
 			reqMethod: apiReq.method,
 			reqURL: this._clearURLParams(apiReq.url || apiReq.href),
@@ -228,27 +228,27 @@ function APICache(config) {
 	this.config = objectAssign({}, defaultConfig, config)
 
 	var handleRequest = function(req, res) {
+		var url = this._getApiURL(req)
+		var that = this
 		var reqBodyRef = {
 			requestBody: ''
 		}
 		this._getRequestBody(req, reqBodyRef)
 
-		var url = this._getApiURL(req)
 		var promise = new Promise(function(resolve, reject) {
 			var apiReq = request(url)
-
-			if (this.config.cacheEnabled) {
+			if (that.config.cacheEnabled) {
 				req
 				.pipe(apiReq)
 				.on('response', function(response) {
-					this.onResponse(response, res, reqBodyRef.requestBody, resolve, reject)
-				}.bind(this))
+					that.onResponse(response, res, reqBodyRef.requestBody, resolve, reject)
+				})
 				.on('error', function(err) {
-					this.onError(err, apiReq, res, reqBodyRef.requestBody, resolve, reject)
+					that.onError(apiReq, res, reqBodyRef.requestBody, resolve, reject)
 					promise.catch(function() {
 						log('API Error', url, err)
 					})
-				}.bind(this))
+				})
 			} else {
 				req.pipe(apiReq).pipe(res)
 
@@ -259,12 +259,14 @@ function APICache(config) {
 					reject(err)
 				})
 			}
-			if (this.config.timeout) {
+			if (that.config.timeout) {
 				setTimeout(function() {
+					that.onError(apiReq, res, reqBodyRef.requestBody, resolve, reject)
+					log('API Timeout', url)
 					apiReq.abort()
-				}, this.config.timeout)
+				}, that.config.timeout)
 			}
-		}.bind(this))
+		})
 
 		return promise
 	}

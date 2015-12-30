@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+		<meta http-equiv="x-ua-compatible" content="ie=edge">
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/css/bootstrap.min.css">
+	</head>
+	<body style="text-align: center; padding: 20px;">
+
+		<div class="container" id="info"></div>
+
+		<div class="container">
+			<div class="btn-group" data-toggle="buttons">
+				<label class="btn btn-primary active">
+					<input type="radio" name="options" id="cat" autocomplete="off"> cat GIF
+				</label>
+				<label class="btn btn-primary">
+					<input type="radio" name="options" id="dog" autocomplete="off"> dog GIF
+				</label>
+				<label class="btn btn-primary">
+					<input type="radio" name="options" id="random" autocomplete="off"> random GIF
+				</label>
+			</div>
+		</div>
+
+		<div class="container">
+			<img id="gif" src="//i1.wp.com/cdnjs.cloudflare.com/ajax/libs/galleriffic/2.0.1/css/loader.gif" />
+		</div>
+
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+		<script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.2/js/bootstrap.min.js"></script>
+		<script>
+		(function() {
+			var gif = $('#gif')
+			var info = $('#info')
+			var loaderUrl = gif.attr('src')
+			$('[name="options"]').parent().on('click', function() {
+				var target = $(this).find('input')
+				/*
+				 * NOTICE:
+				 * call target is localhost:9999, node-cache-proxy is proxing request to
+				 * giphy.com and store it in cache-api/ directory
+				 */
+				var url = 'http://localhost:9999/giphy/v1/gifs/random?tag=' + target.attr('id') +'&api_key=dc6zaTOxFJmzC&limit=1'
+
+				gif.attr('src', loaderUrl)
+				info.html('[GET] ' + url)
+				$.get(url).then(function(content) {
+					gif.attr('src', content.data.image_url)
+				})
+			}).first().click()
+		})()
+		</script>
+	</body>
+</html>

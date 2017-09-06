@@ -1,6 +1,6 @@
 {
   "name": "node-api-cache-proxy",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Cache requests in nodejs",
   "main": "index.js",
   "scripts": {
@@ -17,14 +17,14 @@
   },
   "homepage": "https://github.com/CezaryDanielNowak/node-api-cache-proxy#readme",
   "dependencies": {
-    "assert": "1.3.0",
-    "crypto-js": "3.1.5",
+    "assert": "1.4.1",
+    "crypto-js": "3.1.9-1",
     "filendir": "1.0.0",
-    "object-assign": "4.0.1",
+    "object-assign": "4.1.1",
     "object.omit": "2.0.0",
-    "raw-body": "2.1.5",
-    "request": "2.67.0",
-    "sanitize-filename": "1.5.3",
+    "raw-body": "2.3.0",
+    "request": "2.81.0",
+    "sanitize-filename": "1.6.1",
     "url-querystring": "2.1.1"
   }
 }

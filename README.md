@@ -4,7 +4,7 @@ When API is down, work may be hard for front-end developer.
 Configure api cache to fallback REST API responses.
 
 
-![API not responding.](docs/OqWCFTn.gif)
+![API not responding.](https://cezarydanielnowak.github.io/node-api-cache-proxy/docs/OqWCFTn.gif)
 “API not responding”
 
 

@@ -13,8 +13,8 @@
   "license": "ISC",
   "homepage": "https://github.com/CezaryDanielNowak/node-api-cache-proxy",
   "dependencies": {
-    "express": "4.13.3",
-    "node-api-cache-proxy": "0.6.2",
-    "open": "0.0.5"
+    "express": "4.18.2",
+    "node-api-cache-proxy": "0.7.1",
+    "open": "8.4.0"
   }
 }

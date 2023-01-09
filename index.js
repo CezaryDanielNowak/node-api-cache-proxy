@@ -6,14 +6,24 @@ var extract = require('url-querystring')
 var filendir = require('filendir')
 var fs = require('fs')
 var getRawBody = require('raw-body')
-var MD5 = require('crypto-js/md5');
-var objectAssign = require('object-assign')
 var omit = require('object.omit')
 var packageJson = require('./package.json')
 var path = require('path')
 var request = require('request')
 var sanitize = require('sanitize-filename')
 var zlib = require('zlib')
+
+var { createHash } = require('node:crypto');
+
+/**
+ * Returns an MD5 hash for the given `content`.
+ *
+ * @param {String} content
+ * @returns {String}
+ */
+function MD5(content) {
+  return createHash('md5').update(content).digest('hex')
+}
 
 var MODULE_NAME = 'api-cache-proxy'
 
@@ -38,7 +48,7 @@ var defaultConfig = {
 	timeout: false
 }
 
-objectAssign(APICache.prototype, {
+Object.assign(APICache.prototype, {
 	_createEnvelope: function(response, responseBody, requestBody) {
 		var excludeRequestHeaders = [
 			'content-encoding', // content is unpacked, content-encoding doesn't apply anymore,
@@ -225,7 +235,7 @@ function APICache(config) {
 	assert(config, 'APICache requres config provided')
 	assert(config.apiUrl, 'APICache: provide apiUrl')
 
-	this.config = objectAssign({}, defaultConfig, config)
+	this.config = Object.assign({}, defaultConfig, config)
 
 	var handleRequest = function(req, res) {
 		var url = this._getApiURL(req)
@@ -245,9 +255,6 @@ function APICache(config) {
 				})
 				.on('error', function(err) {
 					that.onError(apiReq, res, reqBodyRef.requestBody, resolve, reject)
-					promise.catch(function() {
-						log('API Error', url, err)
-					})
 				})
 			} else {
 				req.pipe(apiReq).pipe(res)
@@ -271,7 +278,11 @@ function APICache(config) {
 		return promise
 	}
 
-	return objectAssign(handleRequest.bind(this), this)
+	promise.catch(function() {
+		log('API Error', url, err)
+	})
+
+	return Object.assign(handleRequest.bind(this), this)
 }
 
 module.exports = APICache

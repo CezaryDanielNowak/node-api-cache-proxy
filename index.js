@@ -9,7 +9,7 @@ var getRawBody = require('raw-body')
 var omit = require('object.omit')
 var packageJson = require('./package.json')
 var path = require('path')
-var request = require('request')
+var request = require('@cypress/request')
 var sanitize = require('sanitize-filename')
 var zlib = require('zlib')
 

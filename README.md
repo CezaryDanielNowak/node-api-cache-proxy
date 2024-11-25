@@ -151,5 +151,5 @@ API data format support table
 
 Requirements
 ------
-This module is maintained on node v0.12.7. It may work on older and newer node
-versions. Feel free to test and send me a feedback :-)
+This module is maintained on node v20 LTS. It may work on older and newer node
+versions.

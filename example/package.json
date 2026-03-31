@@ -1,20 +1,20 @@
 {
-  "name": "node-api-cache-proxy-example",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/CezaryDanielNowak/node-api-cache-proxy.git"
-  },
-  "license": "ISC",
-  "homepage": "https://github.com/CezaryDanielNowak/node-api-cache-proxy",
-  "dependencies": {
-    "express": "4.18.2",
-    "node-api-cache-proxy": "0.7.1",
-    "open": "8.4.0"
-  }
+	"name": "node-api-cache-proxy-example",
+	"version": "1.0.1",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"start": "node index.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/CezaryDanielNowak/node-api-cache-proxy.git"
+	},
+	"license": "ISC",
+	"homepage": "https://github.com/CezaryDanielNowak/node-api-cache-proxy",
+	"dependencies": {
+		"express": "^5.2.1",
+		"node-api-cache-proxy": "1.0.1",
+		"open": "^11.0.0"
+	}
 }

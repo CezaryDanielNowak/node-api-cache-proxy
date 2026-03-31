@@ -42,12 +42,13 @@
 				 * call target is localhost:9999, node-cache-proxy is proxing request to
 				 * giphy.com and store it in cache-api/ directory
 				 */
-				var url = 'http://localhost:9999/giphy/v1/gifs/random?tag=' + target.attr('id') +'&api_key=dc6zaTOxFJmzC&limit=1'
+				const extra = 'JmFwaV9rZXk9Y0RmTEg3QXpzaXozbWhFSXVLdzByTmkxN0I1WUxrY0s=';
+				var url = 'http://localhost:9999/giphy/v1/gifs/random?tag=' + target.attr('id') +'&limit=1' + atob(extra)
 
 				gif.attr('src', loaderUrl)
 				info.html('[GET] ' + url)
 				$.get(url).then(function(content) {
-					gif.attr('src', content.data.image_url)
+					gif.attr('src', content.data.images.original.url)
 				})
 			}).first().click()
 		})()

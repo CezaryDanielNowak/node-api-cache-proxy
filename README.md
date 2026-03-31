@@ -19,6 +19,7 @@ How to install
 ```
 npm install --save node-api-cache-proxy
 ```
+NPM: https://www.npmjs.com/package/node-api-cache-proxy
 
 How to use
 ------

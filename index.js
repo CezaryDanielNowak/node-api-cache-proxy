@@ -1,7 +1,14 @@
 /* global require, console, module, Buffer */
 
 'use strict'
-var assert = require('assert')
+function assert(what, errorMessage) {
+	if (!what) {
+		const err = new Error(errorMessage);
+		err.name = 'AssertionError';
+		throw err;
+	}
+}
+
 var extract = require('url-querystring')
 var filendir = require('filendir')
 var fs = require('fs')
@@ -10,7 +17,7 @@ var omit = require('object.omit')
 var packageJson = require('./package.json')
 var path = require('path')
 var request = require('@cypress/request')
-var sanitize = require('sanitize-filename')
+var sanitizeFilename = require('sanitize-filename')
 var zlib = require('zlib')
 
 var { createHash } = require('node:crypto');
@@ -87,7 +94,9 @@ Object.assign(APICache.prototype, {
 			// http://nickfishman.com/post/49533681471/nodejs-http-requests-with-gzip-deflate-compression
 			var encoding = apiResponse.headers['content-encoding']
 			var buffer = Buffer.concat(body)
-			if (encoding === 'gzip') {
+			if (encoding === 'br') {
+				body = zlib.brotliDecompressSync(buffer)
+			} else if (encoding === 'gzip') {
 				body = zlib.gunzipSync(buffer)
 			} else if (encoding == 'deflate') {
 				body = zlib.inflateSync(buffer)
@@ -152,7 +161,7 @@ Object.assign(APICache.prototype, {
 	 */
 	_clearURLParams: function(href) {
 		var url = extract(href)
-		var queryObj = omit(url.qs, this.config.excludeRequestParams)
+		var queryObj = omit({ ...url.qs }, this.config.excludeRequestParams)
 
 		var desiredUrlParams = Object.keys(queryObj).map(function(paramName) {
 			return paramName + '=' + encodeURIComponent(queryObj[paramName])
@@ -167,7 +176,7 @@ Object.assign(APICache.prototype, {
 			bodyHash = ' ' + MD5(JSON.stringify(envelope.reqBody))
 		}
 
-		var sanitazedURL = sanitize(envelope.reqURL.replace('://', '-'), {replacement: '-'})
+		var sanitazedURL = sanitizeFilename(envelope.reqURL.replace('://', '-'), {replacement: '-'})
 		var fileName = envelope.reqMethod + '_' + sanitazedURL + bodyHash +'.tmp'
 
 		return path.resolve(this.config.cacheDir, fileName)
@@ -253,7 +262,7 @@ function APICache(config) {
 				.on('response', function(response) {
 					that.onResponse(response, res, reqBodyRef.requestBody, resolve, reject)
 				})
-				.on('error', function(err) {
+				.on('error', function() {
 					that.onError(apiReq, res, reqBodyRef.requestBody, resolve, reject)
 				})
 			} else {
@@ -275,12 +284,12 @@ function APICache(config) {
 			}
 		})
 
+		promise.catch(function(err) {
+			log('API Error', url, err)
+		})
+
 		return promise
 	}
-
-	promise.catch(function() {
-		log('API Error', url, err)
-	})
 
 	return Object.assign(handleRequest.bind(this), this)
 }
